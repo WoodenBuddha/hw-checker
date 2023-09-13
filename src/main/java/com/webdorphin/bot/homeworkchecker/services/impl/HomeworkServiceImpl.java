@@ -29,6 +29,7 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
@@ -69,15 +70,8 @@ public class HomeworkServiceImpl implements HomeworkService {
     }
 
     @Override
-    public OutgoingMessage checkHomework(IncomingMessage incomingMessage) {
-        var assignment = new Assignment();
+    public Assignment checkHomework(Assignment assignment) {
         try {
-            // TODO: work with file and assignment
-            var file = getDocument(incomingMessage.getMessage().getDocument(), incomingMessage.getRetrieveDocumentCallback());
-            var sourceCode = downloadFile(file);
-
-            assignment.setStatus(AssignmentStatus.NEW);
-            assignment.setSourceCode(sourceCode);
             assignment = assignmentRepository.save(assignment);
 
             if(!testAssignment(assignment)) {
@@ -85,10 +79,6 @@ public class HomeworkServiceImpl implements HomeworkService {
             }
             assignment.setStatus(AssignmentStatus.GRADED);
             assignmentRepository.save(assignment);
-        } catch (TelegramApiException e) {
-            log.error("Something wrong with getting file info from tg! {}", e.getMessage());
-        } catch (IOException e) {
-            log.error("Something wrong with getting file from tg server! {}", e.getMessage());
         } catch (CodeXResponseError codeXResponseError) {
             assignment.setStatus(AssignmentStatus.ERROR);
             assignmentRepository.save(assignment);
@@ -99,24 +89,7 @@ public class HomeworkServiceImpl implements HomeworkService {
             assignmentRepository.save(assignment);
         }
 
-        // TODO: return result, not outgoing msg
-        var outgoingMsg = new OutgoingMessage();
-        outgoingMsg.setInitialMessage(incomingMessage.getMessage());
-        outgoingMsg.setRequestType(incomingMessage.getRequestType());
-//        outgoingMsg.setText();
-
-        return outgoingMsg;
-    }
-
-    private File getDocument(Document document, Function<GetFile, File> callback) throws TelegramApiException {
-        GetFile getFile = new GetFile();
-        getFile.setFileId(document.getFileId());
-        return callback.apply(getFile);
-    }
-
-    private String downloadFile(File file) throws IOException {
-        InputStream is = new URL(file.getFileUrl(botConfig.getBotToken())).openStream();
-        return new String(is.readAllBytes(), StandardCharsets.UTF_8);
+        return assignment;
     }
 
     private boolean testAssignment(Assignment assignment) throws NoTestCaseForAssignmentException, CodeXResponseError {
@@ -134,9 +107,15 @@ public class HomeworkServiceImpl implements HomeworkService {
 
         for (var testCase : testCases) {
             var response = runAssignmentRemotely(assignment, testCase);
+
+            // TODO: can be removed if add test cases with trim via controller
+            var preformatExpected = formatAndTrim(testCase.getOutput());
+            var preformatActual = formatAndTrim(response.getOutput());
+
             var expectedResult = response.getError().isEmpty()
-                    && testCase.getOutput().equalsIgnoreCase(response.getOutput());
+                    && preformatExpected.equalsIgnoreCase(preformatActual);
             if (!expectedResult) {
+                assignment.setTestCaseError(testCase.getOutput());
                 assignment.setErrorMsg(response.getError());
                 allCasesPassed = false;
                 break;
@@ -166,10 +145,17 @@ public class HomeworkServiceImpl implements HomeworkService {
 
     private String buildCodeXInput(TestCase testCase) {
         StringBuilder sb = new StringBuilder();
-        if (!testCase.getInput().isEmpty())
+        if (!Optional.ofNullable(testCase)
+                .map(TestCase::getInput)
+                .map(String::isEmpty)
+                .orElse(true))
             for (String in : testCase.getInput().split(TEST_CASE_INPUT_DELIMITER)) {
                 sb.append(in).append(NEXT_LINE);
             }
         return sb.toString();
+    }
+
+    private String formatAndTrim(String msg) {
+        return msg.replaceAll("\\s", "");
     }
 }

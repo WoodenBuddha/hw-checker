@@ -1,10 +1,9 @@
 package com.webdorphin.bot.homeworkchecker.services;
 
-import com.webdorphin.bot.homeworkchecker.dto.telegram.IncomingMessage;
-import com.webdorphin.bot.homeworkchecker.dto.telegram.OutgoingMessage;
+import com.webdorphin.bot.homeworkchecker.model.Assignment;
 
 public interface HomeworkService {
 
-    OutgoingMessage checkHomework(IncomingMessage incomingMessage);
+    Assignment checkHomework(Assignment assignment);
 
 }

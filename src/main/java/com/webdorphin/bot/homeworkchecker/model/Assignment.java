@@ -29,4 +29,7 @@ public class Assignment {
 
     @Column
     private String errorMsg;
+
+    @Column
+    private String testCaseError;
 }

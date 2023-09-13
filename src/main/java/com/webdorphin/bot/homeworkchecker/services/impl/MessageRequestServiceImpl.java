@@ -12,12 +12,14 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
 
+import static com.webdorphin.bot.homeworkchecker.util.FileUtils.removeExtension;
+
 @Service
 @Slf4j
 public class MessageRequestServiceImpl implements MessageRequestService {
 
     private static final Set<String> POSSIBLE_GRADE_REQUEST_TEXT = Set.of("оценка", "оценки", "grade", "grades");
-    private static final Set<String> ALLOWED_FILENAMES = Set.of("all");
+    public static final Set<String> ALLOWED_FILENAMES = Set.of("all");
     private static final Pattern FILENAME_PATTERN = Pattern.compile("\\d+");
 
     @Override
@@ -30,9 +32,9 @@ public class MessageRequestServiceImpl implements MessageRequestService {
         if (isGradeRequest(incomingMessage)) {
             incomingMessage.setRequestType(RequestType.REQUEST_GRADE);
         } else if (isUploadHomework(incomingMessage)) {
-            var fileName = incomingMessage.getMessage().getDocument().getFileName();
+            var fileName = removeExtension(incomingMessage.getMessage().getDocument().getFileName());
             if (!ALLOWED_FILENAMES.contains(fileName)
-                || !FILENAME_PATTERN.matcher(fileName).matches()) {
+                && !FILENAME_PATTERN.matcher(fileName).matches()) {
                 throw new UnsupportedFilenameException(fileName);
             }
 
