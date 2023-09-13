@@ -5,7 +5,6 @@ import com.webdorphin.bot.homeworkchecker.dto.telegram.IncomingMessage;
 import com.webdorphin.bot.homeworkchecker.services.MessageRequestService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.telegram.telegrambots.meta.api.objects.Document;
 import org.telegram.telegrambots.meta.api.objects.Message;
 
 import java.util.Optional;
@@ -30,7 +29,7 @@ public class MessageRequestServiceImpl implements MessageRequestService {
             incomingMessage.setRequestType(RequestType.UPLOAD_HOMEWORK);
         } else {
             incomingMessage.setRequestType(RequestType.NOT_DETERMINED);
-            log.warn("Couldn't determine request from {}", incomingMessage.getUsername());
+            log.warn("Couldn't determine request from {}", incomingMessage.getUser().getUsername());
         }
         log.debug("Determined type of the request is {} for msgId = {}", incomingMessage.getRequestType(), incomingMessage.getMessage().getMessageId());
     }

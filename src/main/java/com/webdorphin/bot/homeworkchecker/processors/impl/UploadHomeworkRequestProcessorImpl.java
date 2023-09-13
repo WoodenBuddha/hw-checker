@@ -2,11 +2,11 @@ package com.webdorphin.bot.homeworkchecker.processors.impl;
 
 import com.webdorphin.bot.homeworkchecker.dto.RequestType;
 import com.webdorphin.bot.homeworkchecker.dto.telegram.IncomingMessage;
-import com.webdorphin.bot.homeworkchecker.dto.telegram.OutgoingMessage;
 import com.webdorphin.bot.homeworkchecker.processors.Processor;
 import com.webdorphin.bot.homeworkchecker.services.HomeworkService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -27,7 +27,10 @@ public class UploadHomeworkRequestProcessorImpl implements Processor {
     }
 
     @Override
-    public OutgoingMessage process(IncomingMessage incomingMessage) {
-        return homeworkService.checkHomework(incomingMessage);
+    @Async
+    public boolean process(IncomingMessage incomingMessage) {
+        var result = homeworkService.checkHomework(incomingMessage);
+
+        return true;
     }
 }

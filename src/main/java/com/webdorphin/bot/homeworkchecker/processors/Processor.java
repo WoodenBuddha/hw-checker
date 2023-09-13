@@ -7,5 +7,5 @@ public interface Processor {
 
     boolean canHandle(IncomingMessage incomingMessage);
 
-    OutgoingMessage process(IncomingMessage incomingMessage);
+    boolean process(IncomingMessage incomingMessage);
 }

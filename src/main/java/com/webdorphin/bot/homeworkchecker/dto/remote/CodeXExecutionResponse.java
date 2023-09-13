@@ -5,7 +5,7 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 @Data
-public class ProgramRemoteExecutionResponse {
+public class CodeXExecutionResponse {
     private String timeStamp;
     private Integer status;
     private String output;

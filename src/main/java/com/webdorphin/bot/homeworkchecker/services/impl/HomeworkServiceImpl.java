@@ -1,9 +1,10 @@
 package com.webdorphin.bot.homeworkchecker.services.impl;
 
+import com.webdorphin.bot.homeworkchecker.HttpClientService;
 import com.webdorphin.bot.homeworkchecker.config.TelegramBotConfig;
 import com.webdorphin.bot.homeworkchecker.dto.AssignmentStatus;
-import com.webdorphin.bot.homeworkchecker.dto.remote.ProgramRemoteExecutionRequest;
-import com.webdorphin.bot.homeworkchecker.dto.remote.ProgramRemoteExecutionResponse;
+import com.webdorphin.bot.homeworkchecker.dto.remote.CodeXExecutionRequest;
+import com.webdorphin.bot.homeworkchecker.dto.remote.CodeXExecutionResponse;
 import com.webdorphin.bot.homeworkchecker.dto.telegram.IncomingMessage;
 import com.webdorphin.bot.homeworkchecker.dto.telegram.OutgoingMessage;
 import com.webdorphin.bot.homeworkchecker.model.Assignment;
@@ -29,16 +30,19 @@ import java.util.function.Function;
 @Slf4j
 public class HomeworkServiceImpl implements HomeworkService {
 
-    private TelegramBotConfig botConfig;
-    private final AssignmentRepository assignmentRepository;
-
-    private static final String REMOTE_CPP_EXECUTION_ENDPOINT = "https://api.codex.jaagrav.in";
     private static final String CPP_LANGUAGE = "cpp";
 
+    private TelegramBotConfig botConfig;
+    private final AssignmentRepository assignmentRepository;
+    private final HttpClientService httpClientService;
+
     @Autowired
-    public HomeworkServiceImpl(TelegramBotConfig botConfig, AssignmentRepository assignmentRepository) {
+    public HomeworkServiceImpl(TelegramBotConfig botConfig,
+                               AssignmentRepository assignmentRepository,
+                               HttpClientService httpClientService) {
         this.botConfig = botConfig;
         this.assignmentRepository = assignmentRepository;
+        this.httpClientService = httpClientService;
     }
 
     @Override
@@ -76,15 +80,13 @@ public class HomeworkServiceImpl implements HomeworkService {
         return new String(is.readAllBytes(), StandardCharsets.UTF_8);
     }
 
-    private ProgramRemoteExecutionResponse runAssignmentRemotely(Assignment assignment) {
-        RestTemplate restTemplate = new RestTemplate();
+    private CodeXExecutionResponse runAssignmentRemotely(Assignment assignment) {
+        var codeXRequest = new CodeXExecutionRequest();
+        codeXRequest.setCode(assignment.getSourceCode());
+//        codeXRequest.setInput(assignment.ge);
+        codeXRequest.setLanguage(CPP_LANGUAGE);
 
-        var remoteRequest = new ProgramRemoteExecutionRequest();
-        remoteRequest.setCode(assignment.getSourceCode());
-        remoteRequest.setLanguage(CPP_LANGUAGE);
-        remoteRequest.setInput("");
-
-        HttpEntity<ProgramRemoteExecutionRequest> request = new HttpEntity<>(remoteRequest);
-        return restTemplate.postForObject(REMOTE_CPP_EXECUTION_ENDPOINT, request, ProgramRemoteExecutionResponse.class);
+        var response = httpClientService.executeRemotely(codeXRequest);
+        return response;
     }
 }

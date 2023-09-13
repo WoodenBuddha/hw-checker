@@ -16,7 +16,7 @@ public class AdminMessageProcessorImpl implements Processor {
     }
 
     @Override
-    public OutgoingMessage process(IncomingMessage incomingMessage) {
-        return null;
+    public boolean process(IncomingMessage incomingMessage) {
+        return false;
     }
 }

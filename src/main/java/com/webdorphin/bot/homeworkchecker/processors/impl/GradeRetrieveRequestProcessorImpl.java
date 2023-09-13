@@ -20,9 +20,9 @@ public class GradeRetrieveRequestProcessorImpl implements Processor {
     }
 
     @Override
-    public OutgoingMessage process(IncomingMessage incomingMessage) {
+    public boolean process(IncomingMessage incomingMessage) {
 
 
-        return null;
+        return false;
     }
 }

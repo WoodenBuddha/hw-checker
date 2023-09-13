@@ -2,8 +2,11 @@ package com.webdorphin.bot.homeworkchecker.telegram;
 
 import com.webdorphin.bot.homeworkchecker.config.TelegramBotConfig;
 import com.webdorphin.bot.homeworkchecker.dto.telegram.IncomingMessage;
+import com.webdorphin.bot.homeworkchecker.exceptions.UserNotFoundException;
+import com.webdorphin.bot.homeworkchecker.model.User;
 import com.webdorphin.bot.homeworkchecker.processors.Processor;
 import com.webdorphin.bot.homeworkchecker.services.MessageRequestService;
+import com.webdorphin.bot.homeworkchecker.services.UserService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -25,30 +28,36 @@ public class TelegramBotServiceImpl extends TelegramLongPollingBot implements Te
     private final TelegramBotConfig telegramBotConfig;
     private final List<Processor> processors;
     private final MessageRequestService messageRequestService;
+    private final UserService userService;
 
     @Autowired
     public TelegramBotServiceImpl(TelegramBotConfig telegramBotConfig,
                                   List<Processor> processors,
-                                  MessageRequestService messageRequestService) {
+                                  MessageRequestService messageRequestService,
+                                  UserService userService) {
         super(telegramBotConfig.getBotToken());
         this.telegramBotConfig = telegramBotConfig;
         this.processors = processors;
         this.messageRequestService = messageRequestService;
+        this.userService = userService;
     }
 
     @Override
     public void onUpdateReceived(Update update) {
-        var user = Optional.of(update)
+        var tgUser = Optional.of(update)
                 .map(Update::getMessage)
                 .map(Message::getFrom)
                 .orElseThrow();
 
-        var incomingMessage = new IncomingMessage();
-        incomingMessage.setUsername(user.getUserName());
-        incomingMessage.setMessage(update.getMessage());
-        incomingMessage.setRetrieveDocumentCallback(this::downloadFileInfo);
-        incomingMessage = messageRequestService.determineRequestType(incomingMessage);
-        receiveMessage(incomingMessage);
+        try {
+            var user = userService.find(tgUser);
+            receiveMessage(map(update, user));
+        } catch (UserNotFoundException e) {
+            var sendMessage = new SendMessage();
+            sendMessage.setChatId(update.getMessage().getChatId());
+            sendMessage.setText("Вы не можете отправить задание на проверку, т.к. я вас не знаю. Обратитесь к @WoodenBuddha");
+            sendReply(sendMessage);
+        }
     }
 
     @Override
@@ -58,26 +67,21 @@ public class TelegramBotServiceImpl extends TelegramLongPollingBot implements Te
 
     @Override
     public void receiveMessage(IncomingMessage incomingMessage) {
-        var outgoingMessage = processors.stream()
+        processors.stream()
                 .filter(processor -> processor.canHandle(incomingMessage))
                 .findFirst()
                 .map(processor -> processor.process(incomingMessage))
                 .orElseThrow();
-
-        sendReply(outgoingMessage.getInitialMessage().getChatId(), outgoingMessage.getText());
     }
 
-    @Override
-    public void sendReply(Long chatId, String message) {
-        var messageToSend = new SendMessage();
-        messageToSend.setChatId(chatId);
-        messageToSend.setText(message);
 
+    public Message sendReply(SendMessage messageToSend) {
         try {
-            execute(messageToSend);
+            return execute(messageToSend);
         } catch (TelegramApiException e) {
             log.error("Couldn't send message to ");
         }
+        return null;
     }
 
     public File downloadFileInfo(GetFile getFile) {
@@ -87,5 +91,14 @@ public class TelegramBotServiceImpl extends TelegramLongPollingBot implements Te
             e.printStackTrace();
         }
         return null;
+    }
+
+    private IncomingMessage map(Update update, User user) {
+        var incomingMessage = new IncomingMessage();
+        incomingMessage.setUser(user);
+        incomingMessage.setMessage(update.getMessage());
+        incomingMessage.setRetrieveDocumentCallback(this::downloadFileInfo);
+        incomingMessage.setSendReplyCallback(this::sendReply);
+        return messageRequestService.determineRequestType(incomingMessage);
     }
 }

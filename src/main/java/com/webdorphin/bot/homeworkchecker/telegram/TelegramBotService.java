@@ -6,5 +6,4 @@ public interface TelegramBotService {
 
     void receiveMessage(IncomingMessage incomingMessage);
 
-    void sendReply(Long chatId, String message);
 }
