@@ -16,7 +16,8 @@ import java.util.Optional;
 
 @Service
 @Slf4j
-public class TelegramBotServiceImpl extends TelegramLongPollingBot implements TelegramBotService {
+public class TelegramBotServiceImpl
+        extends TelegramLongPollingBot implements TelegramBotService {
 
     private final TelegramBotConfig telegramBotConfig;
     private final List<Processor> processors;
@@ -34,6 +35,8 @@ public class TelegramBotServiceImpl extends TelegramLongPollingBot implements Te
                 .map(Update::getMessage)
                 .map(Message::getFrom)
                 .orElseThrow();
+
+
 
     }
 

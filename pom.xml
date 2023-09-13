@@ -8,11 +8,18 @@
 		<version>3.1.3</version>
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
+
 	<groupId>com.webdorphin.bot</groupId>
 	<artifactId>homework-checker</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name>homework-checker</name>
 	<description>Bot that check cpp homework and returns grades</description>
+
+	<properties>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+	</properties>
+
 	<dependencies>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -40,6 +47,12 @@
 			<artifactId>telegrambots</artifactId>
 			<version>6.5.0</version>
 		</dependency>
+
+		<dependency>
+			<groupId>org.postgresql</groupId>
+			<artifactId>postgresql</artifactId>
+			<version>42.6.0</version>
+		</dependency>
 	</dependencies>
 
 	<build>
@@ -56,6 +69,19 @@
 					</excludes>
 				</configuration>
 			</plugin>
+<!--			<plugin>-->
+<!--				<groupId>org.liquibase</groupId>-->
+<!--				<artifactId>liquibase-maven-plugin</artifactId>-->
+<!--				<version>${liquibase.version}</version>-->
+<!--				<configuration>-->
+<!--					<propertyFile>${profile.propertyFile}</propertyFile>-->
+<!--					<changeLogFile>${profile.changeLogFile}</changeLogFile>-->
+<!--					&lt;!&ndash; log  &ndash;&gt;-->
+<!--					<verbose>${profile.verbose}</verbose>-->
+<!--					<logging>${profile.logging}</logging>-->
+<!--					<promptOnNonLocalDatabase>false</promptOnNonLocalDatabase>-->
+<!--				</configuration>-->
+<!--			</plugin>-->
 		</plugins>
 	</build>
 
