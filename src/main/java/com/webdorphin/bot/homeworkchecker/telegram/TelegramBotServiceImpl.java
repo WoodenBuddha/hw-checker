@@ -2,6 +2,7 @@ package com.webdorphin.bot.homeworkchecker.telegram;
 
 import com.webdorphin.bot.homeworkchecker.config.TelegramBotConfig;
 import com.webdorphin.bot.homeworkchecker.dto.telegram.IncomingMessage;
+import com.webdorphin.bot.homeworkchecker.exceptions.UnsupportedFilenameException;
 import com.webdorphin.bot.homeworkchecker.exceptions.UserNotFoundException;
 import com.webdorphin.bot.homeworkchecker.model.User;
 import com.webdorphin.bot.homeworkchecker.processors.Processor;
@@ -57,6 +58,11 @@ public class TelegramBotServiceImpl extends TelegramLongPollingBot implements Te
             sendMessage.setChatId(update.getMessage().getChatId());
             sendMessage.setText("Вы не можете отправить задание на проверку, т.к. я вас не знаю. Обратитесь к @WoodenBuddha");
             sendReply(sendMessage);
+        } catch (UnsupportedFilenameException e) {
+            var sendMessage = new SendMessage();
+            sendMessage.setChatId(update.getMessage().getChatId());
+            sendMessage.setText("Некорректное имя файла. Файл должен называться по номеру задачи, например \"201.txt\"");
+            sendReply(sendMessage);
         }
     }
 
@@ -93,7 +99,7 @@ public class TelegramBotServiceImpl extends TelegramLongPollingBot implements Te
         return null;
     }
 
-    private IncomingMessage map(Update update, User user) {
+    private IncomingMessage map(Update update, User user) throws UnsupportedFilenameException {
         var incomingMessage = new IncomingMessage();
         incomingMessage.setUser(user);
         incomingMessage.setMessage(update.getMessage());
