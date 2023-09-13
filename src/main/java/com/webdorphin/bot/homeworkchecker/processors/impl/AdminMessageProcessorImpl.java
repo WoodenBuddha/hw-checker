@@ -12,7 +12,7 @@ public class AdminMessageProcessorImpl implements Processor {
 
     @Override
     public boolean canHandle(IncomingMessage incomingMessage) {
-        return incomingMessage.isAdmin();
+        return false;
     }
 
     @Override

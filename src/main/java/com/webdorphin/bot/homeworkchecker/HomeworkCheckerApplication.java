@@ -1,6 +1,6 @@
 package com.webdorphin.bot.homeworkchecker;
 
-import com.webdorphin.bot.homeworkchecker.services.impl.TelegramBotServiceImpl;
+import com.webdorphin.bot.homeworkchecker.telegram.TelegramBotServiceImpl;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.telegram.telegrambots.meta.TelegramBotsApi;

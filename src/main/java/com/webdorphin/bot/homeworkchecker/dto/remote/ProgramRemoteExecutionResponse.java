@@ -6,7 +6,7 @@ import java.time.LocalDateTime;
 
 @Data
 public class ProgramRemoteExecutionResponse {
-    private LocalDateTime timeStamp;
+    private String timeStamp;
     private Integer status;
     private String output;
     private String error;
