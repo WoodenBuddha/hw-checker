@@ -23,7 +23,7 @@ public class User {
     @Column(name = "chat_id")
     private Long chatId;
 
-    @OneToOne
+    @OneToOne(cascade = CascadeType.ALL)
     private Student student;
 
     @OneToMany(fetch = FetchType.LAZY)

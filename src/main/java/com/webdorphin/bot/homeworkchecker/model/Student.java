@@ -20,7 +20,7 @@ public class Student {
     @Column(name = "lastname")
     private String lastname;
 
-    @OneToOne
-    private User user;
+    @ManyToOne
+    private Group group;
 }
 
