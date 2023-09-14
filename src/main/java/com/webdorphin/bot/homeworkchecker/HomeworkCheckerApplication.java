@@ -11,6 +11,7 @@ import org.telegram.telegrambots.updatesreceivers.DefaultBotSession;
 public class HomeworkCheckerApplication {
 
     public static void main(String[] args) throws TelegramApiException {
+        System.setProperty("user.timezone", "Asia/Almaty");
         var ctx = SpringApplication.run(HomeworkCheckerApplication.class, args);
         var telegramBot = ctx.getBean(TelegramBotServiceImpl.class);
         TelegramBotsApi botsApi = new TelegramBotsApi(DefaultBotSession.class);

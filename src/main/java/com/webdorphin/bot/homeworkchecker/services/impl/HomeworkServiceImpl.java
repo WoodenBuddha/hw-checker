@@ -76,10 +76,9 @@ public class HomeworkServiceImpl implements HomeworkService {
         try {
             var taskCode = assignment.getTaskCode();
             var task = taskRepository.findByCode(taskCode)
-                    .orElseThrow(() -> new TaskNotFoundException("Could find task " + taskCode + " sent by " + username));
+                    .orElseThrow(() -> new TaskNotFoundException("Could find task " + taskCode + " sent by " + username, taskCode, username));
             if (task.getDeadline().isBefore(LocalDateTime.now()))
-                throw new SubmissionAfterDeadlineException("Task is sent after deadline");
-
+                throw new SubmissionAfterDeadlineException("Task is sent after deadline", taskCode, username, task.getDeadline(), LocalDateTime.now());
 
             userRepository.findByUsername(username)
                     .ifPresent(assignment::setUser);
