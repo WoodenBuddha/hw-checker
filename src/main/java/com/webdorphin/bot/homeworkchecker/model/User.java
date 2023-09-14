@@ -26,6 +26,6 @@ public class User {
     @OneToOne(cascade = CascadeType.ALL)
     private Student student;
 
-    @OneToMany(fetch = FetchType.LAZY)
+    @OneToMany(fetch = FetchType.LAZY, mappedBy = "user")
     private List<Assignment> assignments;
 }

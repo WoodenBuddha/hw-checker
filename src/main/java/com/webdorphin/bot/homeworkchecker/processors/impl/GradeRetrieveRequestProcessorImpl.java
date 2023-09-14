@@ -2,27 +2,98 @@ package com.webdorphin.bot.homeworkchecker.processors.impl;
 
 import com.webdorphin.bot.homeworkchecker.dto.RequestType;
 import com.webdorphin.bot.homeworkchecker.dto.telegram.IncomingMessage;
-import com.webdorphin.bot.homeworkchecker.dto.telegram.OutgoingMessage;
+import com.webdorphin.bot.homeworkchecker.model.Assignment;
+import com.webdorphin.bot.homeworkchecker.model.User;
 import com.webdorphin.bot.homeworkchecker.processors.Processor;
+import com.webdorphin.bot.homeworkchecker.repositories.UserRepository;
+import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.objects.Message;
+
+import java.util.*;
+import java.util.function.Function;
 
 @Service
 @Slf4j
 public class GradeRetrieveRequestProcessorImpl implements Processor {
 
-    private static final RequestType SUPPORTED_TYPE = RequestType.REQUEST_GRADE;
+    private static final String TOTAL_GRADE_HEADER = "Текущая общая оценка за задачи: ";
+    private static final String GRADE_HEADER = "Задача ";
+    private static final String EQ = ": ";
+    private static final String NEW_LINE = "\n";
 
-    @Override
-    public boolean canHandle(IncomingMessage incomingMessage) {
-        return incomingMessage.isVerifiedUser()
-                && SUPPORTED_TYPE.equals(incomingMessage.getRequestType());
+    private static final RequestType SUPPORTED_TYPE = RequestType.REQUEST_GRADE;
+    private final UserRepository userRepository;
+
+    public GradeRetrieveRequestProcessorImpl(UserRepository userRepository) {
+        this.userRepository = userRepository;
     }
 
     @Override
+    public boolean canHandle(IncomingMessage incomingMessage) {
+        return SUPPORTED_TYPE.equals(incomingMessage.getRequestType());
+    }
+
+    @Override
+    @Async
+    @Transactional
     public boolean process(IncomingMessage incomingMessage) {
+        processGradesRequest(incomingMessage.getUser().getUsername(),
+                incomingMessage.getMessage().getChatId(),
+                incomingMessage.getSendReplyCallback());
+        return true;
+    }
 
+    private void processGradesRequest(String username,
+                                      Long chatId,
+                                      Function<SendMessage, Message> sendMessageCallback) {
+        var userAssignments = userRepository.findByUsername(username)
+                .map(User::getAssignments)
+                .orElse(Collections.emptyList());
 
-        return false;
+        var grades = collectGrades(userAssignments);
+        var totalGrade = grades.values()
+                    .stream()
+                    .reduce(0.0, Double::sum);
+        var text = buildGradesText(totalGrade, grades);
+
+        var sendMessage = new SendMessage();
+        sendMessage.setChatId(chatId);
+        sendMessage.setText(text);
+        sendMessageCallback.apply(sendMessage);
+
+    }
+
+    private Map<String, Double> collectGrades(List<Assignment> assignments) {
+        var maxGradePerAssignment = new HashMap<String, Double>();
+        for (var assignment : assignments) {
+            var task = assignment.getTaskCode();
+            if (maxGradePerAssignment.get(task) == null || maxGradePerAssignment.get(task) < assignment.getGrade()) {
+                maxGradePerAssignment.put(task, assignment.getGrade());
+            }
+        }
+        return maxGradePerAssignment;
+    }
+
+    private String buildGradesText(Double total, Map<String, Double> grades) {
+        var sb = new StringBuilder();
+        sb.append(TOTAL_GRADE_HEADER)
+                .append(total)
+                .append(NEW_LINE)
+                .append(NEW_LINE);
+
+        for (var e : grades.entrySet()) {
+            sb.append(GRADE_HEADER)
+                    .append(e.getKey())
+                    .append(EQ)
+                    .append(e.getValue())
+                    .append(NEW_LINE)
+                    .append(NEW_LINE);
+        }
+
+        return sb.toString();
     }
 }

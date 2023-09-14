@@ -5,33 +5,24 @@ import com.webdorphin.bot.homeworkchecker.config.TelegramBotConfig;
 import com.webdorphin.bot.homeworkchecker.dto.AssignmentStatus;
 import com.webdorphin.bot.homeworkchecker.dto.remote.CodeXExecutionRequest;
 import com.webdorphin.bot.homeworkchecker.dto.remote.CodeXExecutionResponse;
-import com.webdorphin.bot.homeworkchecker.dto.telegram.IncomingMessage;
-import com.webdorphin.bot.homeworkchecker.dto.telegram.OutgoingMessage;
 import com.webdorphin.bot.homeworkchecker.exceptions.CodeXResponseError;
 import com.webdorphin.bot.homeworkchecker.exceptions.NoTestCaseForAssignmentException;
 import com.webdorphin.bot.homeworkchecker.model.Assignment;
 import com.webdorphin.bot.homeworkchecker.model.TestCase;
 import com.webdorphin.bot.homeworkchecker.repositories.AssignmentRepository;
 import com.webdorphin.bot.homeworkchecker.repositories.TestCaseRepository;
+import com.webdorphin.bot.homeworkchecker.repositories.UserRepository;
 import com.webdorphin.bot.homeworkchecker.services.HomeworkService;
 import jakarta.annotation.PostConstruct;
+import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.telegram.telegrambots.meta.api.methods.GetFile;
-import org.telegram.telegrambots.meta.api.objects.Document;
-import org.telegram.telegrambots.meta.api.objects.File;
-import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.URL;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Function;
 
 @Service
 @Slf4j
@@ -45,6 +36,7 @@ public class HomeworkServiceImpl implements HomeworkService {
 
     private TelegramBotConfig botConfig;
     private final AssignmentRepository assignmentRepository;
+    private final UserRepository userRepository;
     private final HttpClientService httpClientService;
     private final TestCaseRepository testCaseRepository;
 
@@ -52,11 +44,13 @@ public class HomeworkServiceImpl implements HomeworkService {
     public HomeworkServiceImpl(TelegramBotConfig botConfig,
                                AssignmentRepository assignmentRepository,
                                HttpClientService httpClientService,
-                               TestCaseRepository testCaseRepository) {
+                               TestCaseRepository testCaseRepository,
+                               UserRepository userRepository) {
         this.botConfig = botConfig;
         this.assignmentRepository = assignmentRepository;
         this.httpClientService = httpClientService;
         this.testCaseRepository = testCaseRepository;
+        this.userRepository = userRepository;
     }
 
     @PostConstruct
@@ -70,11 +64,14 @@ public class HomeworkServiceImpl implements HomeworkService {
     }
 
     @Override
-    public Assignment checkHomework(Assignment assignment) {
+    @Transactional
+    public Assignment checkHomework(Assignment assignment, String username) {
         try {
+            userRepository.findByUsername(username)
+                    .ifPresent(assignment::setUser);
             assignment = assignmentRepository.save(assignment);
 
-            if(!testAssignment(assignment)) {
+            if (!testAssignment(assignment)) {
                 assignment.setGrade(0.0);
             }
             assignment.setStatus(AssignmentStatus.GRADED);
@@ -110,7 +107,7 @@ public class HomeworkServiceImpl implements HomeworkService {
 
             // TODO: can be removed if add test cases with trim via controller
             var preformatExpected = formatAndTrim(testCase.getOutput());
-            var preformatActual = formatAndTrim(response.getOutput());
+            var preformatActual = postprocessOutput(response.getOutput());
 
             var expectedResult = response.getError().isEmpty()
                     && preformatExpected.equalsIgnoreCase(preformatActual);
@@ -153,6 +150,19 @@ public class HomeworkServiceImpl implements HomeworkService {
                 sb.append(in).append(NEXT_LINE);
             }
         return sb.toString();
+    }
+
+    private String postprocessOutput(String output) {
+        var out = getLastLine(output);
+        out = formatAndTrim(out);
+        return out;
+    }
+
+    private String getLastLine(String text) {
+        var lineBreakerIdx = text.lastIndexOf("\n");
+        return lineBreakerIdx != -1
+                ? text.substring(lineBreakerIdx)
+                : text;
     }
 
     private String formatAndTrim(String msg) {

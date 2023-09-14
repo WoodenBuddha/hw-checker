@@ -3,6 +3,9 @@ package com.webdorphin.bot.homeworkchecker.model;
 import com.webdorphin.bot.homeworkchecker.dto.AssignmentStatus;
 import jakarta.persistence.*;
 import lombok.Data;
+import org.hibernate.annotations.CreationTimestamp;
+
+import java.time.LocalDateTime;
 
 @Data
 @Entity
@@ -14,6 +17,10 @@ public class Assignment {
     @Column(name = "id")
     private Long id;
 
+    @CreationTimestamp
+    @Temporal(TemporalType.TIMESTAMP)
+    @Column
+    private LocalDateTime createDate;
 
     @Column
     private String sourceCode;
@@ -32,4 +39,8 @@ public class Assignment {
 
     @Column
     private String testCaseError;
+
+    @ManyToOne(cascade = CascadeType.ALL)
+    @JoinColumn(name = "user_id")
+    private User user;
 }

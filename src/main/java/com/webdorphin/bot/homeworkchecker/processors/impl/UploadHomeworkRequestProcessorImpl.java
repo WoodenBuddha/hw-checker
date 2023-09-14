@@ -64,7 +64,7 @@ public class UploadHomeworkRequestProcessorImpl implements Processor {
             assignment.setSourceCode(sourceCode);
             assignment.setTaskCode(taskCode);
 
-            var result = homeworkService.checkHomework(assignment);
+            var result = homeworkService.checkHomework(assignment, incomingMessage.getUser().getUsername());
             var sendMessage = new SendMessage();
             sendMessage.setChatId(incomingMessage.getMessage().getChatId());
             sendMessage.setText(buildResultingText(result, taskCode));
