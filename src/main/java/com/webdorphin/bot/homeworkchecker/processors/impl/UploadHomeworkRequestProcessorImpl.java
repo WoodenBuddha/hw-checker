@@ -5,6 +5,8 @@ import com.webdorphin.bot.homeworkchecker.dto.AssignmentStatus;
 import com.webdorphin.bot.homeworkchecker.dto.RequestType;
 import com.webdorphin.bot.homeworkchecker.dto.telegram.IncomingMessage;
 import com.webdorphin.bot.homeworkchecker.exceptions.UnsupportedFilenameException;
+import com.webdorphin.bot.homeworkchecker.exceptions.task.SubmissionAfterDeadlineException;
+import com.webdorphin.bot.homeworkchecker.exceptions.task.TaskNotFoundException;
 import com.webdorphin.bot.homeworkchecker.model.Assignment;
 import com.webdorphin.bot.homeworkchecker.processors.Processor;
 import com.webdorphin.bot.homeworkchecker.services.HomeworkService;
@@ -35,6 +37,11 @@ public class UploadHomeworkRequestProcessorImpl implements Processor {
     private final TelegramBotConfig botConfig;
     private final HomeworkService homeworkService;
 
+    private static final String TG_ERROR = "Проблема с телегой, попробуйте мб попзже";
+    private static final String ALL_IN_ONE_CHECK_NOT_SUPPORTED = "Пока что проверка заданий в одном файле не поддерживается";
+    private static final String TASK_DOES_NOT_EXIST = "Задачи с таким номером не существует";
+    private static final String DEADLINE_TASK = "Дедлайн по задаче прошел";
+
     @Autowired
     private UploadHomeworkRequestProcessorImpl(HomeworkService homeworkService, TelegramBotConfig botConfig) {
         this.homeworkService = homeworkService;
@@ -55,8 +62,7 @@ public class UploadHomeworkRequestProcessorImpl implements Processor {
                 throw new UnsupportedFilenameException("Not supported yet");
             }
 
-            var file = getDocument(document, incomingMessage.getRetrieveDocumentCallback());
-            var sourceCode = downloadFile(file);
+            var sourceCode = getSubmittedAssignment(document, incomingMessage.getRetrieveDocumentCallback());
             var taskCode = removeExtension(document.getFileName());
 
             var assignment = new Assignment();
@@ -65,33 +71,30 @@ public class UploadHomeworkRequestProcessorImpl implements Processor {
             assignment.setTaskCode(taskCode);
 
             var result = homeworkService.checkHomework(assignment, incomingMessage.getUser().getUsername());
-            var sendMessage = new SendMessage();
-            sendMessage.setChatId(incomingMessage.getMessage().getChatId());
-            sendMessage.setText(buildResultingText(result, taskCode));
-            incomingMessage.getSendReplyCallback().apply(sendMessage);
+            sendMessageBack(incomingMessage, buildResultingText(result, taskCode));
 
         } catch (TelegramApiException e) {
             log.error("Something wrong with getting file info from tg! {}", e.getMessage());
-            var sendMessage = new SendMessage();
-            sendMessage.setChatId(incomingMessage.getMessage().getChatId());
-            sendMessage.setText("Проблема с телегой, попробуйте мб попзже");
-            incomingMessage.getSendReplyCallback().apply(sendMessage);
+            sendMessageBack(incomingMessage, TG_ERROR);
         } catch (IOException e) {
             log.error("Something wrong with getting file from tg server! {}", e.getMessage());
-            var sendMessage = new SendMessage();
-            sendMessage.setChatId(incomingMessage.getMessage().getChatId());
-            sendMessage.setText("Проблема с телегой, попробуйте мб попзже");
-            incomingMessage.getSendReplyCallback().apply(sendMessage);
+            sendMessageBack(incomingMessage, TG_ERROR);
         } catch (UnsupportedFilenameException e) {
             log.warn("All.txt");
-            var sendMessage = new SendMessage();
-            sendMessage.setChatId(incomingMessage.getMessage().getChatId());
-            sendMessage.setText("Пока что проверка заданий в одном файле не поддерживается");
-            incomingMessage.getSendReplyCallback().apply(sendMessage);
+            sendMessageBack(incomingMessage, ALL_IN_ONE_CHECK_NOT_SUPPORTED);
+        } catch (TaskNotFoundException e) {
+            log.error("No such task = ");
+            sendMessageBack(incomingMessage, TASK_DOES_NOT_EXIST);
+        } catch (SubmissionAfterDeadlineException e) {
+            sendMessageBack(incomingMessage, DEADLINE_TASK);
         }
 
-
         return true;
+    }
+
+    private String getSubmittedAssignment(Document document, Function<GetFile, File> retriever) throws TelegramApiException, IOException {
+        var file = getDocument(document, retriever);
+        return downloadFile(file);
     }
 
     private File getDocument(Document document, Function<GetFile, File> callback) throws TelegramApiException {
@@ -115,7 +118,13 @@ public class UploadHomeworkRequestProcessorImpl implements Processor {
             resultMsg += "\nНа экран нужно вывести: " + result.getTestCaseError();
         }
 
-
         return resultMsg;
+    }
+
+    private void sendMessageBack(IncomingMessage incomingMessage, String text) {
+        var sendMessage = new SendMessage();
+        sendMessage.setChatId(incomingMessage.getMessage().getChatId());
+        sendMessage.setText(text);
+        incomingMessage.getSendReplyCallback().apply(sendMessage);
     }
 }

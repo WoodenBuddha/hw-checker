@@ -2,11 +2,14 @@ package com.webdorphin.bot.homeworkchecker.model;
 
 import jakarta.persistence.*;
 import lombok.Data;
+import org.hibernate.annotations.CreationTimestamp;
+
+import java.time.LocalDateTime;
 
 @Data
 @Entity
-@Table(name = "test_cases")
-public class TestCase {
+@Table
+public class Task {
 
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
@@ -14,14 +17,13 @@ public class TestCase {
     private Long id;
 
     @Column
-    private String taskCode;
+    private String code;
+
+    @CreationTimestamp
+    @Temporal(TemporalType.TIMESTAMP)
+    @Column
+    private LocalDateTime deadline;
 
     @Column
-    private String input;
-
-    @Column
-    private String output;
-
-    @Column
-    private Integer variation;
+    private Double score;
 }
