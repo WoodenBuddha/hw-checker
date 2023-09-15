@@ -22,6 +22,7 @@ public class Assignment {
     @Column
     private LocalDateTime createDate;
 
+    @Lob
     @Column
     private String sourceCode;
 
@@ -34,11 +35,15 @@ public class Assignment {
     @Column
     private String taskCode;
 
+    @Lob
     @Column
     private String errorMsg;
 
     @Column
     private String testCaseError;
+
+    @Column
+    private String additionalMsg;
 
     @ManyToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "user_id")

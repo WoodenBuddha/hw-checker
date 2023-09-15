@@ -56,7 +56,7 @@ public class TelegramBotServiceImpl extends TelegramLongPollingBot implements Te
         } catch (UserNotFoundException e) {
             var sendMessage = new SendMessage();
             sendMessage.setChatId(update.getMessage().getChatId());
-            sendMessage.setText("Вы не можете отправить задание на проверку, т.к. я вас не знаю. Обратитесь к @WoodenBuddha");
+            sendMessage.setText("Я не могу Вам помочь или пообщаться, т.к. я вас не знаю. Обратитесь к @WoodenBuddha");
             sendReply(sendMessage);
         } catch (UnsupportedFilenameException e) {
             var sendMessage = new SendMessage();

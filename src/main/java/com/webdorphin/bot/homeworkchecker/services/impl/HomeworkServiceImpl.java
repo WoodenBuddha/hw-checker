@@ -86,6 +86,10 @@ public class HomeworkServiceImpl implements HomeworkService {
 
             if (!testAssignment(assignment, task.getScore())) {
                 assignment.setGrade(0.0);
+//                assignmentRepository.findByUserIdAndTaskCodeAndGrade(assignment.getUser().getId(),
+//                        taskCode, 0.0)
+//                        .stream()
+//                        .sorted()
             }
             assignment.setStatus(AssignmentStatus.GRADED);
         } catch (CodeXResponseError codeXResponseError) {
