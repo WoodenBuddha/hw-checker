@@ -18,6 +18,7 @@ import static com.webdorphin.bot.homeworkchecker.util.FileUtils.removeExtension;
 @Slf4j
 public class MessageRequestServiceImpl implements MessageRequestService {
 
+    private static final String SLASH_START = "/";
     private static final Set<String> POSSIBLE_GRADE_REQUEST_TEXT = Set.of("оценка", "оценки", "grade", "grades");
     public static final Set<String> ALLOWED_FILENAMES = Set.of("all");
     private static final Pattern FILENAME_PATTERN = Pattern.compile("\\d+");
@@ -29,7 +30,9 @@ public class MessageRequestServiceImpl implements MessageRequestService {
     }
 
     private void tryToDetermineRequestType(IncomingMessage incomingMessage) throws UnsupportedFilenameException {
-        if (isGradeRequest(incomingMessage)) {
+        if (isCommandRequest(incomingMessage)) {
+            incomingMessage.setRequestType(RequestType.COMMAND);
+        } else if (isGradeRequest(incomingMessage)) {
             incomingMessage.setRequestType(RequestType.REQUEST_GRADE);
         } else if (isUploadHomework(incomingMessage)) {
             var fileName = removeExtension(incomingMessage.getMessage().getDocument().getFileName());
@@ -44,6 +47,17 @@ public class MessageRequestServiceImpl implements MessageRequestService {
             log.warn("Couldn't determine request from {}", incomingMessage.getUser().getUsername());
         }
         log.debug("Determined type of the request is {} for msgId = {}", incomingMessage.getRequestType(), incomingMessage.getMessage().getMessageId());
+    }
+
+    private boolean isCommandRequest(IncomingMessage incomingMessage) {
+        return Optional.of(incomingMessage)
+                .map(IncomingMessage::getMessage)
+                .map(Message::getText)
+                .filter(msg -> !msg.isBlank())
+                .map(String::toLowerCase)
+                .map(msg -> msg.startsWith(SLASH_START))
+                .orElse(false);
+
     }
 
     private boolean isGradeRequest(IncomingMessage message) {

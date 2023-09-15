@@ -21,7 +21,7 @@ import java.util.function.Function;
 public class GradeRetrieveRequestProcessorImpl implements Processor {
 
     private static final String TOTAL_GRADE_HEADER = "Текущая общая оценка за задачи: ";
-    private static final String GRADE_HEADER = "Задача ";
+    private static final String WEEK_GRADE_HEADER = "Оценка за %s неделю";
     private static final String EQ = ": ";
     private static final String NEW_LINE = "\n";
 
@@ -81,19 +81,29 @@ public class GradeRetrieveRequestProcessorImpl implements Processor {
     private String buildGradesText(Double total, Map<String, Double> grades) {
         var sb = new StringBuilder();
         sb.append(TOTAL_GRADE_HEADER)
-                .append(total)
+                .append(String.format("%.2f", total))
                 .append(NEW_LINE)
                 .append(NEW_LINE);
 
-        for (var e : grades.entrySet()) {
-            sb.append(GRADE_HEADER)
-                    .append(e.getKey())
-                    .append(EQ)
-                    .append(e.getValue())
-                    .append(NEW_LINE)
-                    .append(NEW_LINE);
-        }
+        Map<String, Double> weeklyGrades = new HashMap<>();
+        grades.forEach((key, value) -> {
+            var week = key.substring(0, 1);
+            weeklyGrades.put(week, weeklyGrades.getOrDefault(week, 0.0) + value);
+        });
+
+        weeklyGrades.forEach((k,v) -> {
+            addWeekGrade(k,v,sb);
+        });
 
         return sb.toString();
     }
+
+    private void addWeekGrade(String weekNum, Double grade, StringBuilder sb) {
+        sb.append(WEEK_GRADE_HEADER.formatted(weekNum))
+                .append(EQ)
+                .append(String.format("%.2f", grade))
+                .append(NEW_LINE)
+                .append(NEW_LINE);
+    }
+
 }

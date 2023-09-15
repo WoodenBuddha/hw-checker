@@ -28,4 +28,7 @@ public class User {
 
     @OneToMany(fetch = FetchType.LAZY, mappedBy = "user")
     private List<Assignment> assignments;
+
+    @Column
+    private Boolean isAdmin;
 }

@@ -52,7 +52,13 @@ public class TelegramBotServiceImpl extends TelegramLongPollingBot implements Te
 
         try {
             var user = userService.find(tgUser);
+
+//            if(user.getIsAdmin()) {
+//
+//            }
             receiveMessage(map(update, user));
+
+
         } catch (UserNotFoundException e) {
             var sendMessage = new SendMessage();
             sendMessage.setChatId(update.getMessage().getChatId());

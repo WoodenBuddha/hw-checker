@@ -2,6 +2,7 @@ package com.webdorphin.bot.homeworkchecker.model;
 
 import com.webdorphin.bot.homeworkchecker.dto.AssignmentStatus;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Size;
 import lombok.Data;
 import org.hibernate.annotations.CreationTimestamp;
 
@@ -22,8 +23,7 @@ public class Assignment {
     @Column
     private LocalDateTime createDate;
 
-    @Lob
-    @Column
+    @Column(length = 65534)
     private String sourceCode;
 
     @Column
@@ -32,11 +32,11 @@ public class Assignment {
     @Column
     private Double grade;
 
+    @Size(min = 1)
     @Column
     private String taskCode;
 
-    @Lob
-    @Column
+    @Column(length = 65534)
     private String errorMsg;
 
     @Column
