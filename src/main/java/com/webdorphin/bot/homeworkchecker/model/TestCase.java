@@ -24,4 +24,7 @@ public class TestCase {
 
     @Column
     private Integer variation;
+
+    @Column
+    private String outputTemplate;
 }

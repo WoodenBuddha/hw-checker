@@ -1,11 +1,11 @@
 package com.webdorphin.bot.homeworkchecker.dto.api;
 
+import com.webdorphin.bot.homeworkchecker.dto.TestCaseDto;
 import lombok.Data;
+
+import java.util.List;
 
 @Data
 public class CreateTestCaseRequest {
-    private String taskCode;
-    private String input;
-    private String output;
-    private Integer variation;
+    List<TestCaseDto> testCases;
 }

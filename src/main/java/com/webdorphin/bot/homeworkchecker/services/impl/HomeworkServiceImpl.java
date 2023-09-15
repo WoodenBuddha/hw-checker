@@ -123,7 +123,7 @@ public class HomeworkServiceImpl implements HomeworkService {
             var expectedResult = response.getError().isEmpty()
                     && preformatExpected.equalsIgnoreCase(preformatActual);
             if (!expectedResult) {
-                assignment.setTestCaseError(testCase.getOutput());
+                assignment.setTestCaseError(testCase.getOutputTemplate());
                 assignment.setErrorMsg(response.getError());
                 allCasesPassed = false;
                 break;

@@ -41,6 +41,7 @@ public class UploadHomeworkRequestProcessorImpl implements Processor {
     private static final String ALL_IN_ONE_CHECK_NOT_SUPPORTED = "Пока что проверка заданий в одном файле не поддерживается";
     private static final String TASK_DOES_NOT_EXIST = "Задачи с номером %s не существует";
     private static final String DEADLINE_TASK = "Дедлайн по задаче %s прошел %s";
+    private static final String CRITICAL_ERROR_MSG = "Чет пошло не так...\nВот ошибка: %s\n]\nПередайте преподавателю @WoodenBuddha, пусть разберется";
 
     @Autowired
     private UploadHomeworkRequestProcessorImpl(HomeworkService homeworkService, TelegramBotConfig botConfig) {
@@ -83,10 +84,13 @@ public class UploadHomeworkRequestProcessorImpl implements Processor {
             log.warn("All.txt");
             sendMessageBack(incomingMessage, ALL_IN_ONE_CHECK_NOT_SUPPORTED);
         } catch (TaskNotFoundException e) {
-            log.error("No such task = ");
+            log.error("No such task = " + e.getTaskCode());
             sendMessageBack(incomingMessage, TASK_DOES_NOT_EXIST.formatted(e.getTaskCode()));
         } catch (SubmissionAfterDeadlineException e) {
             sendMessageBack(incomingMessage, DEADLINE_TASK.formatted(e.getTaskCode(), e.getDeadline()));
+        } catch (Throwable t) {
+            log.error("Упали при проверке - ", t);
+            sendMessageBack(incomingMessage, CRITICAL_ERROR_MSG.formatted(t.getMessage()));
         }
 
         return true;
