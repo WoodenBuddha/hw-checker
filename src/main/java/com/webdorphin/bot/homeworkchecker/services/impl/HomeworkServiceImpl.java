@@ -35,6 +35,7 @@ public class HomeworkServiceImpl implements HomeworkService {
     private static final String CPP_LANGUAGE = "cpp";
     private static final String TEST_CASE_INPUT_DELIMITER = ",";
     private static final String NEXT_LINE = "\n";
+    private static final String SKIP_OUTPUT_CHECK_CONDITION = "[any]";
 
     private static final ConcurrentHashMap<String, List<TestCase>> TEST_CASES = new ConcurrentHashMap<>();
 
@@ -119,13 +120,15 @@ public class HomeworkServiceImpl implements HomeworkService {
 
         for (var testCase : testCases) {
             var response = runAssignmentRemotely(assignment, testCase);
+            assignment.setActualOutput(response.getOutput());
 
             // TODO: can be removed if add test cases with trim via controller
             var preformatExpected = formatAndTrim(testCase.getOutput());
             var preformatActual = postprocessOutput(response.getOutput());
 
+            var skipOutputCheck = SKIP_OUTPUT_CHECK_CONDITION.equals(preformatExpected);
             var expectedResult = response.getError().isEmpty()
-                    && preformatExpected.equalsIgnoreCase(preformatActual);
+                    && (skipOutputCheck || preformatExpected.equalsIgnoreCase(preformatActual));
             if (!expectedResult) {
                 assignment.setTestCaseError(testCase.getOutputTemplate());
                 assignment.setErrorMsg(response.getError());

@@ -45,6 +45,9 @@ public class Assignment {
     @Column
     private String additionalMsg;
 
+    @Column(length = 65534)
+    private String actualOutput;
+
     @ManyToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "user_id")
     private User user;
