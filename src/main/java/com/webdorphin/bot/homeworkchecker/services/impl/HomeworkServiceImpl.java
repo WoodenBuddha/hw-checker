@@ -128,7 +128,7 @@ public class HomeworkServiceImpl implements HomeworkService {
 
             var skipOutputCheck = SKIP_OUTPUT_CHECK_CONDITION.equals(preformatExpected);
             var expectedResult = response.getError().isEmpty()
-                    && (skipOutputCheck || preformatExpected.equalsIgnoreCase(preformatActual));
+                    && (skipOutputCheck || preformatActual.contains(preformatExpected));
             if (!expectedResult) {
                 assignment.setTestCaseError(testCase.getOutputTemplate());
                 assignment.setErrorMsg(response.getError());
