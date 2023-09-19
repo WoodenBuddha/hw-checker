@@ -26,6 +26,11 @@ public class UserServiceImpl implements UserService {
     @Override
     public User find(org.telegram.telegrambots.meta.api.objects.User telegramUser) throws UserNotFoundException {
         var username = telegramUser.getUserName();
+        return find(username);
+    }
+
+    @Override
+    public User find(String username) throws UserNotFoundException {
         return userRepository.findByUsername(username)
                 .orElseThrow(() -> new UserNotFoundException("User not found by username=" + username));
     }

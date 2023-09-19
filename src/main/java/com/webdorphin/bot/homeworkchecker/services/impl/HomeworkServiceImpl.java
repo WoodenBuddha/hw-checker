@@ -23,9 +23,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Service
@@ -69,6 +67,18 @@ public class HomeworkServiceImpl implements HomeworkService {
             cachedTestCases.add(tc);
             TEST_CASES.put(tc.getTaskCode(), cachedTestCases);
         }
+    }
+
+
+    public Map<String, Assignment> getGradedUserWeeklyAssignments(Long userId, String week) {
+        var maxGradePerAssignment = new HashMap<String, Assignment>();
+        for (var assignment : assignmentRepository.findByUserIdAndGradeNotAndTaskCodeStartsWith(userId, 0.0, week)) {
+            var task = assignment.getTaskCode();
+            if (maxGradePerAssignment.get(task) == null || maxGradePerAssignment.get(task).getGrade() < assignment.getGrade()) {
+                maxGradePerAssignment.put(task, assignment);
+            }
+        }
+        return maxGradePerAssignment;
     }
 
     @Override

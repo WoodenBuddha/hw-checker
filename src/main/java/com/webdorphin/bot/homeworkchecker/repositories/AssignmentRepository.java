@@ -10,5 +10,6 @@ import java.util.List;
 public interface AssignmentRepository extends JpaRepository<Assignment, Long> {
 
     List<Assignment> findByUserIdAndTaskCodeAndGrade(Long userId, String taskCode, Double grade);
-
+    List<Assignment> findByUserIdAndGradeAndTaskCodeStartsWith(Long userId, Double grade, String taskCode);
+    List<Assignment> findByUserIdAndGradeNotAndTaskCodeStartsWith(Long userId, Double grade, String taskCode);
 }

@@ -67,6 +67,7 @@ public class GradeRetrieveRequestProcessorImpl implements Processor {
 
     }
 
+    // todo: extract to service
     private Map<String, Double> collectGrades(List<Assignment> assignments) {
         var maxGradePerAssignment = new HashMap<String, Double>();
         for (var assignment : assignments) {

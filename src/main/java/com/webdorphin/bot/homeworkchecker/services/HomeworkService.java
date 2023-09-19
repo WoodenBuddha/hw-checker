@@ -4,8 +4,11 @@ import com.webdorphin.bot.homeworkchecker.exceptions.task.SubmissionAfterDeadlin
 import com.webdorphin.bot.homeworkchecker.exceptions.task.TaskNotFoundException;
 import com.webdorphin.bot.homeworkchecker.model.Assignment;
 
+import java.util.List;
+import java.util.Map;
+
 public interface HomeworkService {
 
     Assignment checkHomework(Assignment assignment, String username) throws TaskNotFoundException, SubmissionAfterDeadlineException;
-
+    Map<String, Assignment> getGradedUserWeeklyAssignments(Long userId, String week);
 }

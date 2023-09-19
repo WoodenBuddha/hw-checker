@@ -8,7 +8,7 @@ import com.webdorphin.bot.homeworkchecker.model.User;
 public interface UserService {
 
     User find(org.telegram.telegrambots.meta.api.objects.User user) throws UserNotFoundException;
-
+    User find(String username) throws UserNotFoundException;
     User createUser(CreateUserRequest createUserRequest) throws GroupNotFoundException;
 
 }
