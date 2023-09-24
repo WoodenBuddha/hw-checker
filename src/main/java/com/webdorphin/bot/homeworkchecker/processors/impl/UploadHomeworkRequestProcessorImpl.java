@@ -8,8 +8,11 @@ import com.webdorphin.bot.homeworkchecker.exceptions.UnsupportedFilenameExceptio
 import com.webdorphin.bot.homeworkchecker.exceptions.task.SubmissionAfterDeadlineException;
 import com.webdorphin.bot.homeworkchecker.exceptions.task.TaskNotFoundException;
 import com.webdorphin.bot.homeworkchecker.model.Assignment;
+import com.webdorphin.bot.homeworkchecker.model.User;
 import com.webdorphin.bot.homeworkchecker.processors.Processor;
+import com.webdorphin.bot.homeworkchecker.repositories.TaskRepository;
 import com.webdorphin.bot.homeworkchecker.services.HomeworkService;
+import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Async;
@@ -24,6 +27,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
 import java.util.function.Function;
 
 import static com.webdorphin.bot.homeworkchecker.services.impl.MessageRequestServiceImpl.ALLOWED_FILENAMES;
@@ -36,6 +40,7 @@ public class UploadHomeworkRequestProcessorImpl implements Processor {
 
     private final TelegramBotConfig botConfig;
     private final HomeworkService homeworkService;
+    private final TaskRepository taskRepository;
 
     private static final String TG_ERROR = "Проблема с телегой, попробуйте мб попзже";
     private static final String ALL_IN_ONE_CHECK_NOT_SUPPORTED = "Пока что проверка заданий в одном файле не поддерживается";
@@ -44,9 +49,10 @@ public class UploadHomeworkRequestProcessorImpl implements Processor {
     private static final String CRITICAL_ERROR_MSG = "Чет пошло не так...\nВот ошибка: %s\n]\nПередайте преподавателю @WoodenBuddha, пусть разберется";
 
     @Autowired
-    private UploadHomeworkRequestProcessorImpl(HomeworkService homeworkService, TelegramBotConfig botConfig) {
+    private UploadHomeworkRequestProcessorImpl(HomeworkService homeworkService, TelegramBotConfig botConfig, TaskRepository taskRepository) {
         this.homeworkService = homeworkService;
         this.botConfig = botConfig;
+        this.taskRepository = taskRepository;
     }
 
     @Override
@@ -71,8 +77,15 @@ public class UploadHomeworkRequestProcessorImpl implements Processor {
             assignment.setSourceCode(sourceCode);
             assignment.setTaskCode(taskCode);
 
-            var result = homeworkService.checkHomework(assignment, incomingMessage.getUser().getUsername());
-            sendMessageBack(incomingMessage, buildResultingText(result, taskCode));
+            var username = incomingMessage.getUser().getUsername();
+
+            var task = taskRepository.findByCode(taskCode)
+                    .orElseThrow(() -> new TaskNotFoundException("Could find task " + taskCode + " sent by " + username, taskCode, username));
+            if (task.getDeadline().isBefore(LocalDateTime.now()))
+                throw new SubmissionAfterDeadlineException("Task is sent after deadline", taskCode, username, task.getDeadline(), LocalDateTime.now());
+
+            var result = homeworkService.checkHomework(assignment, username, task);
+            sendMessageBack(incomingMessage, buildResultingText(result, taskCode, task.getScore()));
 
         } catch (TelegramApiException e) {
             log.error("Something wrong with getting file info from tg! {}", e.getMessage());
@@ -112,8 +125,8 @@ public class UploadHomeworkRequestProcessorImpl implements Processor {
         return new String(is.readAllBytes(), StandardCharsets.UTF_8);
     }
 
-    private String buildResultingText(Assignment result, String taskCode) {
-        var resultMsg = "Ваша оценка за задание " + taskCode + " = " + result.getGrade();
+    private String buildResultingText(Assignment result, String taskCode, Double maxScore) {
+        var resultMsg = "Ваша оценка за задание " + taskCode + ": " + result.getGrade() + " из " + maxScore;
 
         if (result.getGrade() == 0.0) {
             resultMsg = result.getErrorMsg() != null && !result.getErrorMsg().isEmpty()

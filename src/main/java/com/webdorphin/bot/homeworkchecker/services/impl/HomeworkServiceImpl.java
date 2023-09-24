@@ -10,6 +10,7 @@ import com.webdorphin.bot.homeworkchecker.exceptions.NoTestCaseForAssignmentExce
 import com.webdorphin.bot.homeworkchecker.exceptions.task.SubmissionAfterDeadlineException;
 import com.webdorphin.bot.homeworkchecker.exceptions.task.TaskNotFoundException;
 import com.webdorphin.bot.homeworkchecker.model.Assignment;
+import com.webdorphin.bot.homeworkchecker.model.Task;
 import com.webdorphin.bot.homeworkchecker.model.TestCase;
 import com.webdorphin.bot.homeworkchecker.repositories.AssignmentRepository;
 import com.webdorphin.bot.homeworkchecker.repositories.TaskRepository;
@@ -37,21 +38,19 @@ public class HomeworkServiceImpl implements HomeworkService {
 
     private static final ConcurrentHashMap<String, List<TestCase>> TEST_CASES = new ConcurrentHashMap<>();
 
-    private TelegramBotConfig botConfig;
     private final AssignmentRepository assignmentRepository;
     private final UserRepository userRepository;
     private final HttpClientService httpClientService;
     private final TestCaseRepository testCaseRepository;
+    @Deprecated(forRemoval = true)
     private final TaskRepository taskRepository;
 
     @Autowired
-    public HomeworkServiceImpl(TelegramBotConfig botConfig,
-                               AssignmentRepository assignmentRepository,
+    public HomeworkServiceImpl(AssignmentRepository assignmentRepository,
                                HttpClientService httpClientService,
                                TestCaseRepository testCaseRepository,
                                UserRepository userRepository,
                                TaskRepository taskRepository) {
-        this.botConfig = botConfig;
         this.assignmentRepository = assignmentRepository;
         this.httpClientService = httpClientService;
         this.testCaseRepository = testCaseRepository;
@@ -69,7 +68,6 @@ public class HomeworkServiceImpl implements HomeworkService {
         }
     }
 
-
     public Map<String, Assignment> getGradedUserWeeklyAssignments(Long userId, String week) {
         var maxGradePerAssignment = new HashMap<String, Assignment>();
         for (var assignment : assignmentRepository.findByUserIdAndGradeNotAndTaskCodeStartsWith(userId, 0.0, week)) {
@@ -83,25 +81,14 @@ public class HomeworkServiceImpl implements HomeworkService {
 
     @Override
     @Transactional
-    public Assignment checkHomework(Assignment assignment, String username) throws TaskNotFoundException, SubmissionAfterDeadlineException {
+    public Assignment checkHomework(Assignment assignment, String username, Task task) throws TaskNotFoundException, SubmissionAfterDeadlineException {
         try {
-            var taskCode = assignment.getTaskCode();
-            var task = taskRepository.findByCode(taskCode)
-                    .orElseThrow(() -> new TaskNotFoundException("Could find task " + taskCode + " sent by " + username, taskCode, username));
-            if (task.getDeadline().isBefore(LocalDateTime.now()))
-                throw new SubmissionAfterDeadlineException("Task is sent after deadline", taskCode, username, task.getDeadline(), LocalDateTime.now());
-
             userRepository.findByUsername(username)
                     .ifPresent(assignment::setUser);
             assignment = assignmentRepository.save(assignment);
 
-            if (!testAssignment(assignment, task.getScore())) {
-                assignment.setGrade(0.0);
-//                assignmentRepository.findByUserIdAndTaskCodeAndGrade(assignment.getUser().getId(),
-//                        taskCode, 0.0)
-//                        .stream()
-//                        .sorted()
-            }
+            testAssignmentWeighted(assignment, task.getScore());
+
             assignment.setStatus(AssignmentStatus.GRADED);
         } catch (CodeXResponseError codeXResponseError) {
             assignment.setStatus(AssignmentStatus.ERROR);
@@ -115,6 +102,47 @@ public class HomeworkServiceImpl implements HomeworkService {
         return assignment;
     }
 
+    private void testAssignmentWeighted(Assignment assignment, Double maxScore) throws NoTestCaseForAssignmentException, CodeXResponseError {
+        var taskCode = assignment.getTaskCode();
+        assignment.setGrade(0.0);
+        var testCases = getTestCases(taskCode);
+        Double gradePerTestCase = maxScore / testCases.size();
+
+        for (var testCase : testCases) {
+            var response = runAssignmentRemotely(assignment, testCase);
+            assignment.setActualOutput(response.getOutput());
+
+            // TODO: can be removed if add test cases with trim via controller
+            var preformatExpected = formatAndTrim(testCase.getOutput());
+            var preformatActual = postprocessOutput(response.getOutput());
+
+            var skipOutputCheck = SKIP_OUTPUT_CHECK_CONDITION.equals(preformatExpected);
+            var expectedResult = response.getError().isEmpty()
+                    && (skipOutputCheck || preformatActual.contains(preformatExpected));
+
+            if (!expectedResult) {
+                assignment.setTestCaseError(testCase.getOutputTemplate());
+                assignment.setErrorMsg(response.getError());
+            } else {
+                assignment.setGrade(assignment.getGrade() + gradePerTestCase);
+            }
+        }
+    }
+
+    @Deprecated(forRemoval = true)
+    @Override
+    @Transactional
+    public Assignment checkHomework(Assignment assignment, String username) throws TaskNotFoundException, SubmissionAfterDeadlineException {
+        var taskCode = assignment.getTaskCode();
+        var task = taskRepository.findByCode(taskCode)
+                .orElseThrow(() -> new TaskNotFoundException("Could find task " + taskCode + " sent by " + username, taskCode, username));
+        if (task.getDeadline().isBefore(LocalDateTime.now()))
+            throw new SubmissionAfterDeadlineException("Task is sent after deadline", taskCode, username, task.getDeadline(), LocalDateTime.now());
+
+        return checkHomework(assignment, username, task);
+    }
+
+    @Deprecated(forRemoval = true)
     private boolean testAssignment(Assignment assignment, Double maxScore) throws NoTestCaseForAssignmentException, CodeXResponseError {
         boolean allCasesPassed = true;
         var taskCode = assignment.getTaskCode();
@@ -165,6 +193,14 @@ public class HomeworkServiceImpl implements HomeworkService {
         if (response == null)
             throw new CodeXResponseError("No response from remote executor");
         return response;
+    }
+
+    private List<TestCase> getTestCases(String taskCode) throws NoTestCaseForAssignmentException {
+        var testCases = testCaseRepository.findAllByTaskCode(taskCode);
+        if (testCases == null || testCases.isEmpty()) {
+            throw new NoTestCaseForAssignmentException("No test cases for task=" + taskCode);
+        }
+        return testCases;
     }
 
     private String buildCodeXInput(TestCase testCase) {
